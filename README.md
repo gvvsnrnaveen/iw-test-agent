@@ -9,7 +9,7 @@ restores the DUT's original configuration.
 ```
  Laptop                                      DUT 1 / DUT 2 (this repo)
  ┌──────────────────────────┐   TCP 5555     ┌──────────────────────────────┐
- │ iw-test-controller       │◄───────────────│ iw-test-agent_agent          │
+ │ iw-test-controller       │◄───────────────│ iw-test-agent          │
  │  plans and runs tests,   │  JSON lines    │  uci / wifi / iw / ping      │
  │  writes the CSV          │  over ethernet │  backup + restore of config  │
  └──────────────────────────┘                └──────────────────────────────┘
@@ -24,7 +24,7 @@ matrix and the CSV output are documented in the
 
 | Path | What |
 |---|---|
-| `dut_agent/iw-test-agent_agent.c` | DUT agent (single C file, libc only) |
+| `dut_agent/iw-test-agent.c` | DUT agent (single C file, libc only) |
 | `dut_agent/openwrt/` | OpenWrt SDK package with a procd service so agents auto-connect at boot |
 | `dut_agent/deploy_agent.sh` | scp the binary and start it over ssh |
 
@@ -45,7 +45,7 @@ make -C dut_agent
 export STAGING_DIR=<sdk>/staging_dir
 make -C dut_agent CC=<sdk>/staging_dir/toolchain-*/bin/aarch64-openwrt-linux-musl-gcc
 
-# or build an .ipk (installs /usr/sbin/iw-test-agent_agent + /etc/init.d/iw-test-agent_agent)
+# or build an .ipk (installs /usr/sbin/iw-test-agent + /etc/init.d/iw-test-agent)
 cp -rL dut_agent/openwrt <sdk>/package/iw-test-agent-agent
 make -C <sdk> package/iw-test-agent-agent/compile V=s
 ```
@@ -56,22 +56,22 @@ In the examples, `192.168.1.100` is the controller and `192.168.1.1` / `192.168.
 
 Option A, ad hoc:
 ```sh
-AGENT_BIN=path/to/cross/iw-test-agent_agent dut_agent/deploy_agent.sh 192.168.1.1 192.168.1.100 dut1
-AGENT_BIN=path/to/cross/iw-test-agent_agent dut_agent/deploy_agent.sh 192.168.1.2 192.168.1.100 dut2
+AGENT_BIN=path/to/cross/iw-test-agent dut_agent/deploy_agent.sh 192.168.1.1 192.168.1.100 dut1
+AGENT_BIN=path/to/cross/iw-test-agent dut_agent/deploy_agent.sh 192.168.1.2 192.168.1.100 dut2
 ```
 
 Option B, persistent (the .ipk is installed):
 ```sh
-uci set iw-test-agent_agent.main.server=192.168.1.100
-uci set iw-test-agent_agent.main.name=dut1
-uci set iw-test-agent_agent.main.enabled=1
-uci commit iw-test-agent_agent && /etc/init.d/iw-test-agent_agent enable && /etc/init.d/iw-test-agent_agent start
+uci set iw-test-agent.main.server=192.168.1.100
+uci set iw-test-agent.main.name=dut1
+uci set iw-test-agent.main.enabled=1
+uci commit iw-test-agent && /etc/init.d/iw-test-agent enable && /etc/init.d/iw-test-agent start
 ```
 
 ### Options
 
 ```
-iw-test-agent_agent -s <controller-ip> [options]
+iw-test-agent -s <controller-ip> [options]
   -s, --server HOST        controller (laptop) address (required)
   -p, --port PORT          controller port (default 5555)
   -n, --name NAME          DUT name reported to controller (default hostname)
@@ -118,7 +118,7 @@ restores that too.
   passed to `uci` through the shell.
 * Set a real country on the controller. In the world regdomain most 5 GHz channels are *no-IR*,
   and those channels are skipped.
-* Simulation: `iw-test-agent_agent -s 127.0.0.1 -n dut1 -S` (and `-n dut2`) lets you try the full
+* Simulation: `iw-test-agent -s 127.0.0.1 -n dut1 -S` (and `-n dut2`) lets you try the full
   controller flow on the laptop without hardware.
 * Run only one agent per DUT. A second agent with the same name replaces the first session, and
   the controller logs a warning.
