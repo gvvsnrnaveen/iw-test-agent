@@ -1,0 +1,35 @@
+#!/bin/sh /etc/rc.common
+# procd service: keeps the agent running and reconnecting to the controller.
+
+START=99
+STOP=10
+USE_PROCD=1
+
+start_service() {
+	local enabled server port name token radio_map nbcmd
+
+	config_load iw-test-agent
+	config_get_bool enabled main enabled 0
+	[ "$enabled" = 1 ] || return 0
+	config_get server main server
+	[ -n "$server" ] || return 0
+	config_get port main port 5555
+	config_get name main name "$(cat /proc/sys/kernel/hostname)"
+	config_get token main token
+	config_get radio_map main radio_map
+	config_get nbcmd main narrowband_cmd
+
+	procd_open_instance
+	procd_set_param command /usr/sbin/iw-test-agent -s "$server" -p "$port" -n "$name"
+	[ -n "$token" ] && procd_append_param command -t "$token"
+	[ -n "$radio_map" ] && procd_append_param command -m "$radio_map"
+	[ -n "$nbcmd" ] && procd_append_param command -N "$nbcmd"
+	procd_set_param respawn 3600 5 0
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+service_triggers() {
+	procd_add_reload_trigger iw-test-agent
+}
