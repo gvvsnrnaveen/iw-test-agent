@@ -604,7 +604,7 @@ static void describe_phy(const char *phy, struct jbuf *res)
 	char chans2[2048] = "", chans5[2048] = "";
 	char key[96];
 	char *line, *save = NULL;
-	int ht40 = 0, vht = 0, he = 0;
+	int ht40 = 0, vht = 0, he = 0, eht = 0;
 	char band[16] = "";
 	char radio[64] = "";
 
@@ -622,6 +622,8 @@ static void describe_phy(const char *phy, struct jbuf *res)
 			vht = 1;
 		if (strstr(line, "HE Iftypes") || strstr(line, "HE MAC Capabilities"))
 			he = 1;
+		if (strstr(line, "EHT Iftypes") || strstr(line, "EHT MAC Capabilities"))
+			eht = 1;
 
 		star = strstr(line, "* ");
 		br = strstr(line, " MHz [");
@@ -662,6 +664,7 @@ static void describe_phy(const char *phy, struct jbuf *res)
 	snprintf(key, sizeof(key), "%s_ht40", phy);    jb_bool(res, key, ht40);
 	snprintf(key, sizeof(key), "%s_vht", phy);     jb_bool(res, key, vht);
 	snprintf(key, sizeof(key), "%s_he", phy);      jb_bool(res, key, he);
+	snprintf(key, sizeof(key), "%s_eht", phy);     jb_bool(res, key, eht);
 	snprintf(key, sizeof(key), "%s_uci", phy);     jb_str(res, key, radio);
 }
 
@@ -688,6 +691,7 @@ static void sim_describe(struct jbuf *res)
 		snprintf(key, sizeof(key), "%s_ht40", phys[i]);    jb_bool(res, key, 1);
 		snprintf(key, sizeof(key), "%s_vht", phys[i]);     jb_bool(res, key, is5);
 		snprintf(key, sizeof(key), "%s_he", phys[i]);      jb_bool(res, key, 1);
+		snprintf(key, sizeof(key), "%s_eht", phys[i]);     jb_bool(res, key, 1);
 		snprintf(key, sizeof(key), "%s_uci", phys[i]);
 		snprintf(g_sim_mode, sizeof(g_sim_mode), "radio%d", i);
 		jb_str(res, key, g_sim_mode);
@@ -850,6 +854,7 @@ static int op_apply(const struct msg *req, struct jbuf *res, char *err, size_t e
 	const char *phy = msg_get(req, "phy", "");
 	const char *mode = msg_get(req, "mode", "");
 	const char *htmode = msg_get(req, "htmode", "HT20");
+	const char *hwmode = msg_get(req, "hwmode", "");
 	const char *ssid = msg_get(req, "ssid", "");
 	const char *enc = msg_get(req, "encryption", "none");
 	const char *key = msg_get(req, "key", "");
@@ -861,7 +866,7 @@ static int op_apply(const struct msg *req, struct jbuf *res, char *err, size_t e
 	char secs[MAX_SECTIONS][64];
 	int n, i;
 
-	if (!is_safe(phy, 0) || !is_safe(htmode, 0) || !is_safe(ssid, 0) ||
+	if (!is_safe(phy, 0) || !is_safe(htmode, 0) || !is_safe(hwmode, 1) || !is_safe(ssid, 0) ||
 	    !is_safe(enc, 0) || !is_safe(key, 1) || !is_safe(country, 1) ||
 	    channel <= 0) {
 		snprintf(err, errsz, "invalid parameters");
@@ -909,10 +914,14 @@ static int op_apply(const struct msg *req, struct jbuf *res, char *err, size_t e
 
 	run_cmd(NULL, 0, "uci set 'wireless.%s.channel=%d'", radio, channel);
 	run_cmd(NULL, 0, "uci set 'wireless.%s.htmode=%s'", radio, htmode);
-	if (chanbw == 5 || chanbw == 10)
-		run_cmd(NULL, 0, "uci set 'wireless.%s.chanbw=%d'", radio, chanbw);
+	/* HT5/HT10: htmode + hwmode=11g only; otherwise put back the original hwmode */
+	run_cmd(NULL, 0, "uci -q delete 'wireless.%s.chanbw'", radio);
+	if (*hwmode)
+		run_cmd(NULL, 0, "uci set 'wireless.%s.hwmode=%s'", radio, hwmode);
 	else
-		run_cmd(NULL, 0, "uci -q delete 'wireless.%s.chanbw'", radio);
+		run_cmd(NULL, 0, "v=$(uci -q -c " BACKUP_DIR " get 'wireless.%s.hwmode') && "
+			"uci set \"wireless.%s.hwmode=$v\" || uci -q delete 'wireless.%s.hwmode'",
+			radio, radio, radio);
 	if (*country)
 		run_cmd(NULL, 0, "uci set 'wireless.%s.country=%s'", radio, country);
 
@@ -961,7 +970,8 @@ static int op_apply(const struct msg *req, struct jbuf *res, char *err, size_t e
 	}
 
 	run_cmd(NULL, 0, "wifi up");
-	log_msg("applied %s on %s(%s) ch%d %s chanbw=%d", mode, phy, radio, channel, htmode, chanbw);
+	log_msg("applied %s on %s(%s) ch%d %s%s%s", mode, phy, radio, channel, htmode,
+		*hwmode ? " hwmode=" : "", hwmode);
 	return 0;
 }
 

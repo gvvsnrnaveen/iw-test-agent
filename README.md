@@ -94,8 +94,8 @@ The controller decides which tests run and in what order. For each test, the age
 1. **Prepares** (once per session): backs up `/etc/config/{wireless,network,firewall}` to
    `/tmp/iw-test-agent_backup`. Creates bridge `br-fpt` with `<subnet>.1` (DUT A) or
    `<subnet>.2` (DUT B), plus an ACCEPT firewall zone. Disables the existing wifi-ifaces.
-2. **Applies** the test: enables only the radio under test. Sets `channel`, `htmode`, and
-   `chanbw` for HT5/HT10. Creates `wireless.fpt_iface` (ifname `fpt0`, `wds=1` for AP/STA,
+2. **Applies** the test: enables only the radio under test. Sets `channel` and `htmode`;
+   HT5/HT10 also set `hwmode=11g`. Creates `wireless.fpt_iface` (ifname `fpt0`, `wds=1` for AP/STA,
    `mesh_id` for mesh), then runs `wifi up`.
 3. **Reports the link state**: whether the AP came up and the STA shows `Connected to` (AP/STA),
    or whether a peer is in `mesh plink ESTAB` (mesh).
@@ -109,7 +109,7 @@ restores that too.
 
 ## Notes and limitations
 
-* **HT5 / HT10**: these are configured through OpenWrt's `chanbw` option.
+* **HT5 / HT10**: these are configured as `htmode=HT5`/`HT10` with `hwmode=11g`.
   Upstream mac80211 and drivers do not implement 5/10 MHz for AP/STA/mesh. Unless your
   firmware/driver build supports it, these tests will FAIL with
   `width 20 MHz, expected 5`, which is a real finding, not a tool error. If your vendor tree has
