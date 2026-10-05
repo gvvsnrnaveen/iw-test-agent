@@ -861,7 +861,6 @@ static int op_apply(const struct msg *req, struct jbuf *res, char *err, size_t e
 	const char *country = msg_get(req, "country", "");
 	int channel = msg_get_int(req, "channel", 0);
 	int chanbw = msg_get_int(req, "chanbw", 20);
-	int wds = msg_get_int(req, "wds", 1);
 	char radio[64];
 	char secs[MAX_SECTIONS][64];
 	int n, i;
@@ -937,8 +936,7 @@ static int op_apply(const struct msg *req, struct jbuf *res, char *err, size_t e
 		run_cmd(NULL, 0, "uci set wireless.fpt_iface.mesh_rssi_threshold=0");
 	} else {
 		run_cmd(NULL, 0, "uci set 'wireless.fpt_iface.ssid=%s'", ssid);
-		if (wds)
-			run_cmd(NULL, 0, "uci set wireless.fpt_iface.wds=1");
+		run_cmd(NULL, 0, "uci set wireless.fpt_iface.wds=1");
 	}
 	run_cmd(NULL, 0, "uci set 'wireless.fpt_iface.encryption=%s'", enc);
 	if (strcmp(enc, "none"))
